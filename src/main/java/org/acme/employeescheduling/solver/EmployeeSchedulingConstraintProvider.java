@@ -35,6 +35,12 @@ public class EmployeeSchedulingConstraintProvider implements ConstraintProvider 
         return (int) Duration.between((shift1Start.isAfter(shift2Start)) ? shift1Start : shift2Start,
                 (shift1End.isBefore(shift2End)) ? shift1End : shift2End).toMinutes();
     }
+    private static boolean overlapsWindow(java.time.LocalDateTime s, java.time.LocalDateTime e,
+                                      java.time.LocalDate date, int sh, int sm, int eh, int em) {
+    var ws = java.time.LocalDateTime.of(date.getYear(), date.getMonth(), date.getDayOfMonth(), sh, sm);
+    var we = java.time.LocalDateTime.of(date.getYear(), date.getMonth(), date.getDayOfMonth(), eh, em);
+    return !e.isBefore(ws) && !s.isAfter(we);
+}
 
     @Override
     public Constraint[] defineConstraints(ConstraintFactory constraintFactory) {
@@ -47,6 +53,13 @@ public class EmployeeSchedulingConstraintProvider implements ConstraintProvider 
                 unavailableEmployee(constraintFactory),
                 weeklyMaxMinutes(constraintFactory), // <-- ekle
                 dailyMaxMinutes(constraintFactory), // <— eklendi
+                weeklyMinWorkingDays(constraintFactory),
+                mustWorkSaturday(constraintFactory),
+                mustWorkSunday(constraintFactory),
+                peakTueManager(constraintFactory),
+                peakTueTotal(constraintFactory),
+                peakSatManager(constraintFactory),
+                peakSatTotal(constraintFactory),
                 // Soft constraints
                 undesiredDayForEmployee(constraintFactory),
                 desiredDayForEmployee(constraintFactory),
@@ -155,6 +168,90 @@ public class EmployeeSchedulingConstraintProvider implements ConstraintProvider 
         .penalize(HardSoftBigDecimalScore.ONE_HARD,
                   (emp, day, minutes, rules) -> (int)(minutes - rules.getDailyMaxMinutes()))
         .asConstraint("Daily max minutes");
+}
+    // <—Haftada en az 6 farklı gün çalışma
+    Constraint weeklyMinWorkingDays(ConstraintFactory f) {
+    return f.forEach(Shift.class)
+        .groupBy(
+            Shift::getEmployee,
+            s -> s.getStart().toLocalDate()
+                  .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
+            ConstraintCollectors.countDistinct(s -> s.getStart().toLocalDate())
+        )
+        .filter((emp, weekStart, workedDays) -> workedDays < 6)
+        .penalize(HardSoftBigDecimalScore.ONE_HARD,
+                (emp, weekStart, workedDays) -> 6 - workedDays)
+        .asConstraint("Weekly min working days (>=6)");
+}
+// <— Cumartesi ve pazar mutlaka çalışsın.
+    Constraint mustWorkSaturday(ConstraintFactory f) {
+    return f.forEach(Shift.class)
+        .groupBy(
+            Shift::getEmployee,
+            s -> s.getStart().toLocalDate()
+                  .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
+            ConstraintCollectors.sumLong(s ->
+                s.getStart().getDayOfWeek() == DayOfWeek.SATURDAY ? 1L : 0L)
+        )
+        .filter((emp, weekStart, satCount) -> satCount == 0L)
+        .penalize(HardSoftBigDecimalScore.ONE_HARD)
+        .asConstraint("Must work on Saturday");
+}
+Constraint mustWorkSunday(ConstraintFactory f) {
+    return f.forEach(Shift.class)
+        .groupBy(
+            Shift::getEmployee,
+            s -> s.getStart().toLocalDate()
+                  .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
+            ConstraintCollectors.sumLong(s ->
+                s.getStart().getDayOfWeek() == DayOfWeek.SUNDAY ? 1L : 0L)
+        )
+        .filter((emp, weekStart, sunCount) -> sunCount == 0L)
+        .penalize(HardSoftBigDecimalScore.ONE_HARD)
+        .asConstraint("Must work on Sunday");
+}
+    Constraint peakTueManager(ConstraintFactory f) {
+    return f.forEach(Shift.class)
+        .filter(s ->
+            s.getStart().getDayOfWeek() == DayOfWeek.TUESDAY &&
+            overlapsWindow(s.getStart(), s.getEnd(), s.getStart().toLocalDate(), 14,0, 20,0) &&
+            "MANAGER".equalsIgnoreCase(s.getRequiredSkill()))
+        .groupBy(s -> s.getStart().toLocalDate(), ConstraintCollectors.count())
+        .filter((date, managerCount) -> managerCount < 1)
+        .penalize(HardSoftBigDecimalScore.ONE_HARD, (date, c) -> 1 - c)
+        .asConstraint("Tue 14-20 at least one MANAGER");
+}
+    Constraint peakTueTotal(ConstraintFactory f) {
+    return f.forEach(Shift.class)
+        .filter(s ->
+            s.getStart().getDayOfWeek() == DayOfWeek.TUESDAY &&
+            overlapsWindow(s.getStart(), s.getEnd(), s.getStart().toLocalDate(), 14,0, 20,0))
+        .groupBy(s -> s.getStart().toLocalDate(), ConstraintCollectors.count())
+        .filter((date, total) -> total < 5)
+        .penalize(HardSoftBigDecimalScore.ONE_HARD, (date, total) -> 5 - total)
+        .asConstraint("Tue 14-20 at least five total");
+}
+    Constraint peakSatManager(ConstraintFactory f) {
+    return f.forEach(Shift.class)
+        .filter(s ->
+            s.getStart().getDayOfWeek() == DayOfWeek.SATURDAY &&
+            overlapsWindow(s.getStart(), s.getEnd(), s.getStart().toLocalDate(), 14,0, 20,0) &&
+            "MANAGER".equalsIgnoreCase(s.getRequiredSkill()))
+        .groupBy(s -> s.getStart().toLocalDate(), ConstraintCollectors.count())
+        .filter((date, managerCount) -> managerCount < 1)
+        .penalize(HardSoftBigDecimalScore.ONE_HARD, (date, c) -> 1 - c)
+        .asConstraint("Sat 14-20 at least one MANAGER");
+}
+
+Constraint peakSatTotal(ConstraintFactory f) {
+    return f.forEach(Shift.class)
+        .filter(s ->
+            s.getStart().getDayOfWeek() == DayOfWeek.SATURDAY &&
+            overlapsWindow(s.getStart(), s.getEnd(), s.getStart().toLocalDate(), 14,0, 20,0))
+        .groupBy(s -> s.getStart().toLocalDate(), ConstraintCollectors.count())
+        .filter((date, total) -> total < 5)
+        .penalize(HardSoftBigDecimalScore.ONE_HARD, (date, total) -> 5 - total)
+        .asConstraint("Sat 14-20 at least five total");
 }
 
 }
