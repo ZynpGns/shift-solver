@@ -9,6 +9,8 @@ import ai.timefold.solver.core.api.domain.solution.ProblemFactCollectionProperty
 import ai.timefold.solver.core.api.domain.valuerange.ValueRangeProvider;
 import ai.timefold.solver.core.api.score.buildin.hardsoftbigdecimal.HardSoftBigDecimalScore;
 import ai.timefold.solver.core.api.solver.SolverStatus;
+import ai.timefold.solver.core.api.domain.solution.ProblemFactProperty;
+import org.acme.employeescheduling.domain.Rules;
 
 @PlanningSolution
 public class EmployeeSchedule {
@@ -24,6 +26,9 @@ public class EmployeeSchedule {
     private HardSoftBigDecimalScore score;
 
     private SolverStatus solverStatus;
+
+    @ProblemFactProperty
+    private Rules rules = new Rules(); // JSON gelmezse varsayılan 3300 dk
 
     // No-arg constructor required for Timefold
     public EmployeeSchedule() {}
@@ -69,4 +74,12 @@ public class EmployeeSchedule {
     public void setSolverStatus(SolverStatus solverStatus) {
         this.solverStatus = solverStatus;
     }
+
+    public Rules getRules() {
+    return rules;
+    }
+
+    public void setRules(Rules rules) {
+    this.rules = rules;
+}
 }
