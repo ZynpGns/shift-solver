@@ -46,6 +46,7 @@ public class EmployeeSchedulingConstraintProvider implements ConstraintProvider 
                 oneShiftPerDay(constraintFactory),
                 unavailableEmployee(constraintFactory),
                 weeklyMaxMinutes(constraintFactory), // <-- ekle
+                dailyMaxMinutes(constraintFactory), // <— eklendi
                 // Soft constraints
                 undesiredDayForEmployee(constraintFactory),
                 desiredDayForEmployee(constraintFactory),
@@ -140,6 +141,20 @@ public class EmployeeSchedulingConstraintProvider implements ConstraintProvider 
         .penalize(HardSoftBigDecimalScore.ONE_HARD,
                   (emp, weekStart, minutes, rules) -> (int) (minutes - rules.getMaxWeeklyMinutes()))
         .asConstraint("Weekly max minutes");
+}
+    Constraint dailyMaxMinutes(ConstraintFactory factory) {
+    return factory.forEach(Shift.class)
+        .groupBy(
+            Shift::getEmployee,
+            s -> s.getStart().toLocalDate(),
+            ConstraintCollectors.sumLong(s ->
+                Duration.between(s.getStart(), s.getEnd()).toMinutes())
+        )
+        .join(Rules.class)
+        .filter((emp, day, minutes, rules) -> minutes > rules.getDailyMaxMinutes())
+        .penalize(HardSoftBigDecimalScore.ONE_HARD,
+                  (emp, day, minutes, rules) -> (int)(minutes - rules.getDailyMaxMinutes()))
+        .asConstraint("Daily max minutes");
 }
 
 }
