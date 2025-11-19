@@ -18,6 +18,10 @@ import ai.timefold.solver.core.api.score.stream.common.LoadBalance;
 import org.acme.employeescheduling.domain.Employee;
 import org.acme.employeescheduling.domain.Shift;
 
+import java.time.DayOfWeek;
+import java.time.temporal.TemporalAdjusters;
+import org.acme.employeescheduling.domain.Rules;
+
 public class EmployeeSchedulingConstraintProvider implements ConstraintProvider {
 
     private static int getMinuteOverlap(Shift shift1, Shift shift2) {
@@ -41,12 +45,14 @@ public class EmployeeSchedulingConstraintProvider implements ConstraintProvider 
                 atLeast10HoursBetweenTwoShifts(constraintFactory),
                 oneShiftPerDay(constraintFactory),
                 unavailableEmployee(constraintFactory),
+                weeklyMaxMinutes(constraintFactory), // <-- ekle
                 // Soft constraints
                 undesiredDayForEmployee(constraintFactory),
                 desiredDayForEmployee(constraintFactory),
                 balanceEmployeeShiftAssignments(constraintFactory)
         };
     }
+    
 
     Constraint requiredSkill(ConstraintFactory constraintFactory) {
         return constraintFactory.forEach(Shift.class)
@@ -119,5 +125,21 @@ public class EmployeeSchedulingConstraintProvider implements ConstraintProvider 
                 .penalizeBigDecimal(HardSoftBigDecimalScore.ONE_SOFT, LoadBalance::unfairness)
                 .asConstraint("Balance employee shift assignments");
     }
+
+    Constraint weeklyMaxMinutes(ConstraintFactory factory) {
+    return factory.forEach(Shift.class)
+        .groupBy(
+            Shift::getEmployee,
+            s -> s.getStart().toLocalDate()
+                  .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
+            ConstraintCollectors.sumLong(s ->
+                Duration.between(s.getStart(), s.getEnd()).toMinutes())
+        )
+        .join(Rules.class)
+        .filter((emp, weekStart, minutes, rules) -> minutes > rules.getMaxWeeklyMinutes())
+        .penalize(HardSoftBigDecimalScore.ONE_HARD,
+                  (emp, weekStart, minutes, rules) -> (int) (minutes - rules.getMaxWeeklyMinutes()))
+        .asConstraint("Weekly max minutes");
+}
 
 }
