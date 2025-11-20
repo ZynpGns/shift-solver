@@ -278,4 +278,38 @@ public class EmployeeSchedulingConstraintProvider implements ConstraintProvider 
                                 Math.abs(workedMinutes - rules.getTargetWeeklyMinutes())))
                 .asConstraint("weeklyTargetMinutesProximity");
     }
+    // SOFT: Çalışanın "istemediği" günlere atama → soft ceza
+private Constraint undesiredDayForEmployee(ConstraintFactory constraintFactory) {
+    return constraintFactory.forEach(Shift.class)
+            .join(Employee.class, equal(Shift::getEmployee, Function.identity()))
+            .flattenLast(Employee::getUndesiredDates)
+            .filter(Shift::isOverlappingWithDate)
+            .penalizeBigDecimal(
+                    HardSoftBigDecimalScore.ONE_SOFT,
+                    s -> BigDecimal.valueOf(s.getOverlappingDurationInMinutes()))
+            .asConstraint("Undesired day for employee");
+}
+
+// SOFT: Çalışanın "tercih ettiği" günlere atama → soft ödül
+private Constraint desiredDayForEmployee(ConstraintFactory constraintFactory) {
+    return constraintFactory.forEach(Shift.class)
+            .join(Employee.class, equal(Shift::getEmployee, Function.identity()))
+            .flattenLast(Employee::getDesiredDates)
+            .filter(Shift::isOverlappingWithDate)
+            .rewardBigDecimal(
+                    HardSoftBigDecimalScore.ONE_SOFT,
+                    s -> BigDecimal.valueOf(s.getOverlappingDurationInMinutes()))
+            .asConstraint("Desired day for employee");
+}
+
+// SOFT: Vardiya sayısını çalışanlar arasında dengeli dağıt
+private Constraint balanceEmployeeShiftAssignments(ConstraintFactory constraintFactory) {
+    return constraintFactory.forEach(Shift.class)
+            .groupBy(Shift::getEmployee, ConstraintCollectors.count())
+            .complement(Employee.class, e -> 0) // ataması olmayanlar da dahil
+            .groupBy(ConstraintCollectors.loadBalance(
+                    (emp, cnt) -> emp, (emp, cnt) -> cnt))
+            .penalizeBigDecimal(HardSoftBigDecimalScore.ONE_SOFT, LoadBalance::unfairness)
+            .asConstraint("Balance employee shift assignments");
+}
 }
