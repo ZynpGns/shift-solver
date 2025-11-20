@@ -282,26 +282,29 @@ public class EmployeeSchedulingConstraintProvider implements ConstraintProvider 
                 .asConstraint("weeklyTargetMinutesProximity");
     }
     // SOFT: Çalışanın "istemediği" günlere atama → soft ceza
+// SOFT – İSTENMEYEN GÜN
 private Constraint undesiredDayForEmployee(ConstraintFactory cf) {
     return cf.forEach(Shift.class)
         .join(Employee.class, equal(Shift::getEmployee, Function.identity()))
-        .flattenLast(Employee::getUndesiredDates) // -> Bi<Shift, LocalDate>
+        .flattenLast(Employee::getUndesiredDates)   // Bi<Shift, LocalDate>
         .filter(Shift::isOverlappingWithDate)
         .penalizeBigDecimal(
             HardSoftBigDecimalScore.ONE_SOFT,
-            (s, date) -> BigDecimal.valueOf(s.getOverlappingDurationInMinutes()))
+            (s, date) -> BigDecimal.valueOf(s.getOverlappingDurationInMinutes(date)) // <- burada 'date' geç
+        )
         .asConstraint("Undesired day for employee");
 }
 
-// SOFT: Çalışanın "tercih ettiği" günlere atama → soft ödül
+// SOFT – TERCİH EDİLEN GÜN
 private Constraint desiredDayForEmployee(ConstraintFactory cf) {
     return cf.forEach(Shift.class)
         .join(Employee.class, equal(Shift::getEmployee, Function.identity()))
-        .flattenLast(Employee::getDesiredDates) // -> Bi<Shift, LocalDate>
+        .flattenLast(Employee::getDesiredDates)     // Bi<Shift, LocalDate>
         .filter(Shift::isOverlappingWithDate)
         .rewardBigDecimal(
             HardSoftBigDecimalScore.ONE_SOFT,
-            (s, date) -> BigDecimal.valueOf(s.getOverlappingDurationInMinutes()))
+            (s, date) -> BigDecimal.valueOf(s.getOverlappingDurationInMinutes(date)) // <- burada da
+        )
         .asConstraint("Desired day for employee");
 }
 
