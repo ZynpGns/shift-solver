@@ -283,6 +283,7 @@ public class EmployeeSchedulingConstraintProvider implements ConstraintProvider 
     }
     // SOFT: Çalışanın "istemediği" günlere atama → soft ceza
 // SOFT – İSTENMEYEN GÜN
+// SOFT – İSTENMEYEN GÜN
 private Constraint undesiredDayForEmployee(ConstraintFactory cf) {
     return cf.forEach(Shift.class)
         .join(Employee.class, equal(Shift::getEmployee, Function.identity()))
