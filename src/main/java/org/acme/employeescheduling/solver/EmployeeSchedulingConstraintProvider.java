@@ -117,13 +117,16 @@ public class EmployeeSchedulingConstraintProvider implements ConstraintProvider 
     }
 
     Constraint unavailableEmployee(ConstraintFactory constraintFactory) {
-        return constraintFactory.forEach(Shift.class)
-                .join(Employee.class, equal(Shift::getEmployee, Function.identity()))
-                .flattenLast(Employee::getUnavailableDates)
-                .filter(Shift::isOverlappingWithDate)
-                .penalize(HardSoftBigDecimalScore.ONE_HARD, Shift::getOverlappingDurationInMinutes)
-                .asConstraint("Unavailable employee");
-    }
+    return constraintFactory.forEach(Shift.class)
+            .join(Employee.class, equal(Shift::getEmployee, Function.identity()))
+            .flattenLast(Employee::getUnavailableDates) // -> (Shift, LocalDate)
+            .filter(Shift::isOverlappingWithDate)
+            .penalize(
+                HardSoftBigDecimalScore.ONE_HARD,
+                (s, date) -> s.getOverlappingDurationInMinutes(date) // <-- date’i geçir
+            )
+            .asConstraint("Unavailable employee");
+}
 
     Constraint weeklyMaxMinutes(ConstraintFactory f) {
         return f.forEach(Shift.class)
@@ -268,7 +271,7 @@ public class EmployeeSchedulingConstraintProvider implements ConstraintProvider 
     }
 
     // ----- SOFT -----
-    private Constraint weeklyTargetMinutesProximity(ConstraintFactory factory) {
+       Constraint weeklyTargetMinutesProximity(ConstraintFactory factory) {
         var byEmployeeWorkedMins = factory.forEach(Shift.class)
                 .filter(s -> s.getEmployee() != null)
                 .groupBy(Shift::getEmployee, ConstraintCollectors.sumLong(this::minutesOf));
@@ -284,7 +287,7 @@ public class EmployeeSchedulingConstraintProvider implements ConstraintProvider 
     // SOFT: Çalışanın "istemediği" günlere atama → soft ceza
 // SOFT – İSTENMEYEN GÜN
 // SOFT – İSTENMEYEN GÜN
-private Constraint undesiredDayForEmployee(ConstraintFactory cf) {
+ Constraint undesiredDayForEmployee(ConstraintFactory cf) {
     return cf.forEach(Shift.class)
         .join(Employee.class, equal(Shift::getEmployee, Function.identity()))
         .flattenLast(Employee::getUndesiredDates)   // Bi<Shift, LocalDate>
@@ -297,7 +300,7 @@ private Constraint undesiredDayForEmployee(ConstraintFactory cf) {
 }
 
 // SOFT – TERCİH EDİLEN GÜN
-private Constraint desiredDayForEmployee(ConstraintFactory cf) {
+ Constraint desiredDayForEmployee(ConstraintFactory cf) {
     return cf.forEach(Shift.class)
         .join(Employee.class, equal(Shift::getEmployee, Function.identity()))
         .flattenLast(Employee::getDesiredDates)     // Bi<Shift, LocalDate>
@@ -311,7 +314,7 @@ private Constraint desiredDayForEmployee(ConstraintFactory cf) {
 
 // SOFT: Vardiya sayısını çalışanlar arasında dengeli dağıt
 
-private Constraint balanceEmployeeShiftAssignments(ConstraintFactory cf) {
+ Constraint balanceEmployeeShiftAssignments(ConstraintFactory cf) {
     return cf.forEach(Shift.class)
         .groupBy(Shift::getEmployee, ConstraintCollectors.count())
         .complement(Employee.class, e -> 0) // ataması olmayanları da dahil et
