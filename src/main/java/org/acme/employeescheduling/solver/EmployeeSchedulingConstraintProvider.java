@@ -53,13 +53,13 @@ public class EmployeeSchedulingConstraintProvider implements ConstraintProvider 
                 unavailableEmployee(constraintFactory),
                 weeklyMaxMinutes(constraintFactory), // <-- ekle
                 dailyMaxMinutes(constraintFactory), // <— eklendi
-                weeklyMinWorkingDays(constraintFactory),
+               /* weeklyMinWorkingDays(constraintFactory),
                 mustWorkSaturday(constraintFactory),
                 mustWorkSunday(constraintFactory),
                 peakTueManager(constraintFactory),
                 peakTueTotal(constraintFactory),
                 peakSatManager(constraintFactory),
-                peakSatTotal(constraintFactory),
+                peakSatTotal(constraintFactory),*/
                 // Soft constraints
                 undesiredDayForEmployee(constraintFactory),
                 desiredDayForEmployee(constraintFactory),
