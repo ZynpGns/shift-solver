@@ -19,9 +19,7 @@ import org.acme.employeescheduling.domain.Employee;
 import org.acme.employeescheduling.domain.Shift;
 import org.acme.employeescheduling.domain.Rules;
 
-import ai.timefold.solver.core.api.score.stream.ConstraintCollectors
-
-import ai.timefold.solver.core.api.score.stream.common.LoadBalance;
+import ai.timefold.solver.core.api.score.stream.ConstraintCollectors;
 
 
 public class EmployeeSchedulingConstraintProvider implements ConstraintProvider {
