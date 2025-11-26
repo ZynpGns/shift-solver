@@ -14,14 +14,18 @@ import org.acme.employeescheduling.domain.Rules;
 
 @PlanningSolution
 public class EmployeeSchedule {
-
-    @ProblemFactCollectionProperty
+    //Bunlar problemde sabit, solver bunları değiştirme.Yani çalışan listesi solver tarafından eklenip / silinmiyor, sadece okunuyor.
+    @ProblemFactCollectionProperty 
     @ValueRangeProvider
     private List<Employee> employees;
 
     @PlanningEntityCollectionProperty
     private List<Shift> shifts;
 
+    //Timefold’un verdiği çözümün ne kadar iyi olduğunu sayısal olarak tutan alan.
+    //hard kısmı: “asla bozulmaması gereken kurallar” (0 veya pozitif olması istenir; negatifse ihlal var).
+    //soft kısmı: “optimizasyon hedefleri” (daha yüksek = daha iyi; örn. isteklerin karşılanma oranı, adalet, maliyet).
+    //BigDecimal olması: dakika / ücret / para gibi değerleri küsuratlı ve hassas hesaplamaya imkan veriyor.
     @PlanningScore
     private HardSoftBigDecimalScore score;
 
