@@ -1,4 +1,4 @@
-package org.acme.employeescheduling.domain;
+ package org.acme.employeescheduling.domain;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -16,9 +16,9 @@ public class Shift {
     private String id;
 
     private LocalDateTime start;
-    private LocalDateTime end;
+    private LocalDateTime end; //vardiya zamanı
 
-    private String location;
+    private String location; //bizde departman bilgisi
     private String requiredSkill;
 
     @PlanningVariable
@@ -91,6 +91,32 @@ public class Shift {
     public void setEmployee(Employee employee) {
         this.employee = employee;
     }
+
+        // Toplam vardiya süresi (mola DAHİL), dakika cinsinden
+    public int getDurationMinutes() {
+        return (int) ChronoUnit.MINUTES.between(start, end);
+    }
+
+    // Mola süresi (senin verdiğin tabloya göre)
+    public int getBreakMinutes() {
+        int duration = getDurationMinutes();
+        if (duration <= 4 * 60) {              // 4 saat ve altı
+            return 15;
+        } else if (duration <= 6 * 60) {       // 4-6 saat arası
+            return 30;
+        } else if (duration <= 11 * 60) {      // 6-11 saat arası
+            return 60;
+        } else {                               // 11 saat üstü
+            return 120;
+        }
+    }
+
+    // Mola HARİÇ gerçek çalışma süresi (dakika)
+    public int getWorkMinutesWithoutBreak() {
+        return getDurationMinutes() - getBreakMinutes();
+    }
+
+    
     //Belirli bir günle çakışıyor mu?
     public boolean isOverlappingWithDate(LocalDate date) {
         return getStart().toLocalDate().equals(date) || getEnd().toLocalDate().equals(date);
