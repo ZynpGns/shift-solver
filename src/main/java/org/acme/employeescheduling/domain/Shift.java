@@ -91,11 +91,11 @@ public class Shift {
     public void setEmployee(Employee employee) {
         this.employee = employee;
     }
-
+    //Belirli bir günle çakışıyor mu?
     public boolean isOverlappingWithDate(LocalDate date) {
         return getStart().toLocalDate().equals(date) || getEnd().toLocalDate().equals(date);
     }
-
+    //Bir günde kaç dakika çalışıyor?
     public int getOverlappingDurationInMinutes(LocalDate date) {
         LocalDateTime startDateTime = LocalDateTime.of(date, LocalTime.MIN);
         LocalDateTime endDateTime = LocalDateTime.of(date, LocalTime.MAX);
@@ -109,7 +109,7 @@ public class Shift {
         long minutes = maxStartTime.until(minEndTime, ChronoUnit.MINUTES);
         return minutes > 0 ? (int) minutes : 0;
     }
-
+    //ileride buraya shiftType eklenebilir(SABAH / AKŞAM / GECE gibi bir enum)
     @Override
     public String toString() {
         return location + " " + start + "-" + end;
