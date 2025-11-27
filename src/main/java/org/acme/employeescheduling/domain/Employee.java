@@ -26,7 +26,7 @@ public class Employee {
 
     }
 
-   /* public Employee(String name, Set<String> skills,
+    public Employee(String name, Set<String> skills,
         Set<LocalDate> unavailableDates, Set<LocalDate> undesiredDates, Set<LocalDate> desiredDates) {
         this.name = name;
         
@@ -34,7 +34,7 @@ public class Employee {
         this.unavailableDates = unavailableDates;
         this.undesiredDates = undesiredDates;
         this.desiredDates = desiredDates;
-    }*/
+    }
 
     public Employee(String name,
                 String storeCode,
